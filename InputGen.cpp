@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <random>
 #include <iostream>
+#include "types.hpp"
 
 using namespace std;
 auto rng = std::default_random_engine();
@@ -12,9 +13,9 @@ auto rng = std::default_random_engine();
 class InputGen
 {
 public:
-    vector<pair<uint64_t, uint64_t>> generateInput(int size)
+    TupleVector generateInput(int size)
     {
-        vector<pair<uint64_t, uint64_t>> result(size);
+        TupleVector result(size);
         for (uint64_t i = 0; i < size; i++)
         {
             auto payload = randomPayload();

@@ -1,13 +1,21 @@
 #include <iostream>
 #include "InputGen.cpp"
+#include "Concurrent.cpp"
 
-int main(int argc, char *argv[])
+int main()
 {
-    auto inputgen = InputGen();
-    auto random = inputgen.generateInput(100);
-    cout << "Generated " << random.size() << " random pairs:" << endl;
-    for (const auto &pair : random)
-    {
-        cout << "ID: " << pair.first << ", Payload: " << pair.second << endl;
-    }
+    InputGen inputgen;
+
+    TupleVector random = inputgen.generateInput(100);
+
+    int num_partitions = 4;
+    int num_threads = 4;
+
+    Concurrent concurrent(random, num_partitions, num_threads);
+
+    concurrent.create_threads();
+
+    concurrent.print_partitions();
+
+    return 0;
 }
