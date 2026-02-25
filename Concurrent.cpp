@@ -30,12 +30,13 @@ public:
             int start = i * TUPLES_PER_THREAD;
             int end = (start + TUPLES_PER_THREAD);
 
-            if (i = NUM_THREADS - 1)
+            if (i == NUM_THREADS - 1)
             {
                 end = tuples.size();
             }
 
-            threads[i] = thread(&Concurrent::hashing_and_insert, this, start, end);
+            threads[i] = thread([this, start, end]
+                                { hashing_and_insert(start, end); });
         }
 
         for (int i = 0; i < NUM_THREADS; i++)
