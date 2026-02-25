@@ -6,10 +6,11 @@ int main()
 {
     InputGen inputgen;
 
-    TupleVector random = inputgen.generateInput(100);
+    const uint64_t tuple_size = pow(2, 24);
+    TupleVector random = inputgen.generateInput(tuple_size);
 
-    int num_partitions = 10;
-    int num_threads = 10;
+    int num_partitions = 1024;
+    int num_threads = 16;
 
     Concurrent concurrent(random, num_partitions, num_threads);
 
