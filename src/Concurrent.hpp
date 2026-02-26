@@ -18,6 +18,7 @@ private:
     std::vector<TupleVector> partitions;
     std::vector<std::atomic_int> partition_lastIndexes;
     const int NUM_THREADS;
+    const int NUM_PARTITIONS;
 
     void hashing_and_insert(int start, int end);
 };

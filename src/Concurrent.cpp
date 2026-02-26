@@ -5,7 +5,6 @@
 using namespace std;
 using namespace std::chrono;
 
-
 Concurrent::Concurrent(TupleVector &tuples,
                        int num_partitions,
                        int num_threads)
@@ -13,7 +12,8 @@ Concurrent::Concurrent(TupleVector &tuples,
       partitions(num_partitions,
                  TupleVector((tuples.size() / num_partitions) * 1.1)),
       partition_lastIndexes(num_partitions),
-      NUM_THREADS(num_threads)
+      NUM_THREADS(num_threads),
+      NUM_PARTITIONS(num_partitions)
 {
 }
 
@@ -73,7 +73,7 @@ void Concurrent::hashing_and_insert(int start, int end)
     {
         auto [key, _] = tuples[i];
 
-        int partition = key % partitions.size();
+        int partition = key % NUM_PARTITIONS;
         int hash_index = partition_lastIndexes[partition].fetch_add(1);
 
         partitions[partition][hash_index] = tuples[i];
