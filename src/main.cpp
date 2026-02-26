@@ -1,6 +1,7 @@
 #include <iostream>
-#include "InputGen.cpp"
-#include "Concurrent.cpp"
+#include "InputGen.hpp"
+#include "Concurrent.hpp"
+#include <cmath>
 
 int main()
 {
