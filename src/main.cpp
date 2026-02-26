@@ -1,6 +1,7 @@
 #include <iostream>
 #include "InputGen.hpp"
 #include "Concurrent.hpp"
+#include "CountThenMove.cpp"
 #include <cmath>
 
 int main()
@@ -14,10 +15,13 @@ int main()
     int num_threads = 16;
 
     Concurrent concurrent(random, num_partitions, num_threads);
+    auto concurrent_timer = concurrent.create_threads_and_run();
+    
+    CountThenMove count(random, num_partitions, num_threads);
+    auto count_timer = count.create_threads_and_run();
 
-    concurrent.create_threads();
-
-    concurrent.print_partitions();
+    cout << "Concurrent: " << concurrent_timer << " ms\n";
+    cout << "CountThenMove: " << count_timer << " ms\n";
 
     return 0;
 }

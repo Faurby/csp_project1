@@ -10,7 +10,7 @@ class Concurrent
 public:
     Concurrent(TupleVector& tuples, int num_partitions, int num_threads);
 
-    void create_threads();
+    long long create_threads_and_run();
     void print_partitions() const;
 
 private:
