@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # Over all constants 
-TEST_RUNS=4
+TEST_RUNS=10
 ALGORITHMS=(1 2)
 ALGORITHMS_NAME=("concurrent" "countThenMove")
 RESULTS_FOLDER="experiment_resuts"
@@ -9,10 +9,9 @@ RESULTS_FOLDER="experiment_resuts"
 CSV_HEADER="threads,hash bits,mean[ms]"
 
 
-mkdir "$RESULTS_FOLDER"
 for algo in 0 1
 do
-    mkdir "$RESULTS_FOLDER/${ALGORITHMS_NAME[$algo]}"
+    mkdir -p "$RESULTS_FOLDER/${ALGORITHMS_NAME[$algo]}"
     for thread in 1 2 4 8 16 32
     do
         # Create csv file for a given number of threads
