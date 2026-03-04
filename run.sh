@@ -38,10 +38,10 @@ do
               # Run TEST_RUNS number of run for pr params and save results 
               runs={1..$TEST_RUNS}
               echo "==== Running tests for ${ALGORITHMS_NAME[$algo]} at $thread threads and $hash_bit hash bits and affinity ${affinity}===="
-              ./out/main $thread $hash_bit $ALGORITHMS[algo] $affinity # Run one extra time to not include cold start time
+              ./out/main $thread $hash_bit ${ALGORITHMS[$algo]} $affinity # Run one extra time to not include cold start time
               for test_run in $(seq 1 $TEST_RUNS)
               do
-                  result=$(./out/main $thread $hash_bit $ALGORITHMS[algo] 0 | grep -oE '[0-9]+')
+                  result=$(./out/main $thread $hash_bit ${ALGORITHMS[$algo]} $affinity | grep -oE '[0-9]+')
                   runs[$(($test_run - 1))]=$result
                   echo -e "\tTest $test_run: $result ms"
               done
