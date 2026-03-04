@@ -17,7 +17,7 @@ Concurrent::Concurrent(TupleVector &tuples,
 {
 }
 
-long long Concurrent::create_threads_and_run()
+long long Concurrent::create_threads_and_run(AffinityStrategy strategy)
 {
     vector<thread> threads(NUM_THREADS);
 
@@ -34,6 +34,7 @@ long long Concurrent::create_threads_and_run()
 
         threads[i] = thread([this, start, end]
                             { hashing_and_insert(start, end); });
+        SetAffinity::pinThreadsToCores(threads, strategy);
     }
 
     for (auto &t : threads)
