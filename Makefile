@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -pthread -Wall -Wextra -O2 -g
+CXXFLAGS = -std=c++20 -pthread -Wall -Wextra -O2 -g
 
 SRC = src/main.cpp src/Concurrent.cpp src/InputGen.cpp src/SetAffinity.cpp
 OUT = out/main
