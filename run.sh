@@ -32,6 +32,7 @@ do
             # Run TEST_RUNS number of run for pr params and save results 
             runs={1..$TEST_RUNS}
             echo "==== Running tests for ${ALGORITHMS_NAME[$algo]} at $thread threads and $hash_bit hash bits ===="
+            ./out/main $thread $hash_bit $ALGORITHMS[algo] 0 # Run one extra time to not include cold start time
             for test_run in $(seq 1 $TEST_RUNS)
             do
                 result=$(./out/main $thread $hash_bit $ALGORITHMS[algo] 0 | grep -oE '[0-9]+')
