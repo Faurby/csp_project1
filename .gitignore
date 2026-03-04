@@ -1,1 +1,5 @@
 out/*
+.vscode/*
+*.png
+*.csv
+*.xlsx
