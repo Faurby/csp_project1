@@ -21,7 +21,7 @@ do
 
 
           # Create csv file for a given number of threads
-          FILE_NAME="$RESULTS_FOLDER/${ALGORITHMS_NAME[$algo]}/${ALGORITHMS_NAME[$algo]}_${thread}_${affinitiy}_t_timings.csv"
+          FILE_NAME="$RESULTS_FOLDER/${ALGORITHMS_NAME[$algo]}/${ALGORITHMS_NAME[$algo]}_${thread}t_${affinity}_timings.csv"
           touch "$FILE_NAME"
 
           # Set the header
