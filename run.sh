@@ -4,9 +4,10 @@
 TEST_RUNS=10
 ALGORITHMS=(1 2)
 ALGORITHMS_NAME=("concurrent" "countThenMove")
+AFFINITIES=("none" "scatter" "compact")
 RESULTS_FOLDER="experiment_resuts"
 
-CSV_HEADER="threads,hash bits,mean[ms]"
+CSV_HEADER="threads,hash bits,mean[ms],affinity"
 
 
 for algo in 0 1
@@ -14,48 +15,54 @@ do
     mkdir -p "$RESULTS_FOLDER/${ALGORITHMS_NAME[$algo]}"
     for thread in 1 2 4 8 16 32
     do
-        # Create csv file for a given number of threads
-        FILE_NAME="$RESULTS_FOLDER/${ALGORITHMS_NAME[$algo]}/${ALGORITHMS_NAME[$algo]}_${thread}t_timings.csv"
-        touch "$FILE_NAME"
-
-        # Set the header
-        echo -n "$CSV_HEADER" > "$FILE_NAME"
-        for i in $(seq 1 $TEST_RUNS)
-        do
-            echo -n ",run$i[ms]" >> "$FILE_NAME"
-        done
-        echo "" >> "$FILE_NAME"
+      for affinity_index in 0 1 2
+      do
+          affinity=${AFFINITIES[$affinity_index]}
 
 
-        for hash_bit in {1..18}
-        do
-            # Run TEST_RUNS number of run for pr params and save results 
-            runs={1..$TEST_RUNS}
-            echo "==== Running tests for ${ALGORITHMS_NAME[$algo]} at $thread threads and $hash_bit hash bits ===="
-            ./out/main $thread $hash_bit $ALGORITHMS[algo] 0 # Run one extra time to not include cold start time
-            for test_run in $(seq 1 $TEST_RUNS)
-            do
-                result=$(./out/main $thread $hash_bit $ALGORITHMS[algo] 0 | grep -oE '[0-9]+')
-                runs[$(($test_run - 1))]=$result
-                echo -e "\tTest $test_run: $result ms"
-            done
+          # Create csv file for a given number of threads
+          FILE_NAME="$RESULTS_FOLDER/${ALGORITHMS_NAME[$algo]}/${ALGORITHMS_NAME[$algo]}_${thread}_${affinitiy}_t_timings.csv"
+          touch "$FILE_NAME"
 
-            # Calculate mean of runs
-            sum=0
-            for run_time in ${runs[@]}
-            do
-                sum=$(($sum + $run_time))
-            done
-            mean=$(($sum / $TEST_RUNS))
+          # Set the header
+          echo -n "$CSV_HEADER" > "$FILE_NAME"
+          for i in $(seq 1 $TEST_RUNS)
+          do
+              echo -n ",run$i[ms]" >> "$FILE_NAME"
+          done
+          echo "" >> "$FILE_NAME"
 
-            # Write results to file
-            echo -e "\tMean: $mean"
-            echo -n "$thread,$hash_bit,$mean" >> "$FILE_NAME"
-            for run_time in ${runs[@]}
-            do
-                echo -n ",$run_time" >> "$FILE_NAME"
-            done
-            echo "" >> "$FILE_NAME"
+
+          for hash_bit in {1..18}
+          do
+              # Run TEST_RUNS number of run for pr params and save results 
+              runs={1..$TEST_RUNS}
+              echo "==== Running tests for ${ALGORITHMS_NAME[$algo]} at $thread threads and $hash_bit hash bits and affinity ${affinity}===="
+              ./out/main $thread $hash_bit $ALGORITHMS[algo] $affinity # Run one extra time to not include cold start time
+              for test_run in $(seq 1 $TEST_RUNS)
+              do
+                  result=$(./out/main $thread $hash_bit $ALGORITHMS[algo] 0 | grep -oE '[0-9]+')
+                  runs[$(($test_run - 1))]=$result
+                  echo -e "\tTest $test_run: $result ms"
+              done
+
+              # Calculate mean of runs
+              sum=0
+              for run_time in ${runs[@]}
+              do
+                  sum=$(($sum + $run_time))
+              done
+              mean=$(($sum / $TEST_RUNS))
+
+              # Write results to file
+              echo -e "\tMean: $mean"
+              echo -n "$thread,$hash_bit,$mean,$affinity" >> "$FILE_NAME"
+              for run_time in ${runs[@]}
+              do
+                  echo -n ",$run_time" >> "$FILE_NAME"
+              done
+              echo "" >> "$FILE_NAME"
+          done
         done
     done
 done
