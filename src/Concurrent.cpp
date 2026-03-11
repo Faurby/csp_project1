@@ -1,6 +1,7 @@
 #include "Concurrent.hpp"
 #include <thread>
 #include <iostream>
+#include <barrier>
 using namespace std;
 using namespace std::chrono;
 
@@ -22,29 +23,30 @@ long long Concurrent::create_threads_and_run(AffinityStrategy strategy)
     threads.reserve(NUM_THREADS);
     const int TUPLES_PER_THREAD = tuples.size() / NUM_THREADS;
 
-    barrier<> sync(NUM_THREADS + 1);
+    std::barrier<> sync_barrier(NUM_THREADS + 1);
 
     for (int i = 0; i < NUM_THREADS; i++)
     {
         int start = i * TUPLES_PER_THREAD;
         int end = (i == NUM_THREADS - 1)
-                      ? tuples.size()
+                      ? (int)tuples.size()
                       : start + TUPLES_PER_THREAD;
-        threads.emplace_back([this, start, end, &sync]
+
+        threads.emplace_back([this, start, end, &sync_barrier]()
         {
-            sync.arrive_and_wait();
+            sync_barrier.arrive_and_wait();
             hashing_and_insert(start, end);
         });
     }
 
     SetAffinity::pinThreadsToCores(threads, strategy);
-    sync.arrive_and_wait(); // release all threads to start work
 
     auto timer_start = high_resolution_clock::now();
+    sync_barrier.arrive_and_wait(); // release all workers
+
     for (auto &t : threads)
-    {
         t.join();
-    }
+
     auto timer_end = high_resolution_clock::now();
     return duration_cast<milliseconds>(timer_end - timer_start).count();
 }

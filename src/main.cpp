@@ -36,13 +36,13 @@ int main(int argc, char *argv[])
     {
         Concurrent concurrent(random, num_partitions, num_threads);
         auto concurrent_timer = concurrent.create_threads_and_run(affinity);
-        cout << "Concurrent: " << concurrent_timer << " ms\n";
+        cout << concurrent_timer << "\n";
         return 0;
     } else if (algorithm == 2)
     {
         CountThenMove count(random, num_partitions, num_threads);
         auto count_timer = count.create_threads_and_run(affinity);
-        cout << "CountThenMove: " << count_timer << " ms\n";
+        cout << count_timer << "\n";
         return 0;
     }
 
