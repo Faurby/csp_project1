@@ -1,61 +1,117 @@
 #! /bin/bash
 
-# Over all constants 
+# Force C locale so awk/printf always use . as decimal separator
+export LC_ALL=C
+export LC_NUMERIC=C
+
 TEST_RUNS=10
 ALGORITHMS=(1 2)
 ALGORITHMS_NAME=("concurrent" "countThenMove")
-RESULTS_FOLDER="experiment_resuts"
+AFFINITIES=("none" "scatter" "compact")
+RESULTS_FOLDER="experiment_results"
+INPUT_TUPLES=$((1 << 24))
 
-CSV_HEADER="threads,hash bits,mean[ms]"
+PERF_EVENTS="dTLB-load-misses,cache-misses"
 
+CSV_HEADER="threads,hash_bits,affinity,mean_ms,mean_tuples_per_sec_millions,mean_dtlb_misses,mean_dtlb_misses_per_tuple,mean_cache_misses,mean_cache_misses_per_tuple"
 
-for algo in 0 1
-do
+parse_perf_event() {
+    local perf_output="$1"
+    local event_name="$2"
+    echo "$perf_output" \
+        | grep -E "^\s+[0-9,].*${event_name}" \
+        | head -1 \
+        | grep -oE '^[[:space:]]*[0-9,]+' \
+        | tr -d ' ,'
+}
+
+for algo in 0 1; do
     mkdir -p "$RESULTS_FOLDER/${ALGORITHMS_NAME[$algo]}"
-    for thread in 1 2 4 8 16 32
-    do
-        # Create csv file for a given number of threads
-        FILE_NAME="$RESULTS_FOLDER/${ALGORITHMS_NAME[$algo]}/${ALGORITHMS_NAME[$algo]}_${thread}t_timings.csv"
-        touch "$FILE_NAME"
 
-        # Set the header
-        echo -n "$CSV_HEADER" > "$FILE_NAME"
-        for i in $(seq 1 $TEST_RUNS)
-        do
-            echo -n ",run$i[ms]" >> "$FILE_NAME"
-        done
-        echo "" >> "$FILE_NAME"
+    for thread in 1 2 4 8 16 32; do
+        for affinity_index in 0 1 2; do
+            affinity=${AFFINITIES[$affinity_index]}
+            FILE_NAME="$RESULTS_FOLDER/${ALGORITHMS_NAME[$algo]}/${ALGORITHMS_NAME[$algo]}_${thread}t_${affinity}_timings.csv"
 
-
-        for hash_bit in {1..18}
-        do
-            # Run TEST_RUNS number of run for pr params and save results 
-            runs={1..$TEST_RUNS}
-            echo "==== Running tests for ${ALGORITHMS_NAME[$algo]} at $thread threads and $hash_bit hash bits ===="
-            ./out/main $thread $hash_bit $ALGORITHMS[algo] 0 # Run one extra time to not include cold start time
-            for test_run in $(seq 1 $TEST_RUNS)
-            do
-                result=$(./out/main $thread $hash_bit $ALGORITHMS[algo] 0 | grep -oE '[0-9]+')
-                runs[$(($test_run - 1))]=$result
-                echo -e "\tTest $test_run: $result ms"
+            # Build header with run columns
+            header="$CSV_HEADER"
+            for ((i=1; i<=TEST_RUNS; i++)); do
+                header+=",run${i}_ms,run${i}_dtlb_misses,run${i}_cache_misses"
             done
+            echo "$header" > "$FILE_NAME"
 
-            # Calculate mean of runs
-            sum=0
-            for run_time in ${runs[@]}
-            do
-                sum=$(($sum + $run_time))
-            done
-            mean=$(($sum / $TEST_RUNS))
+            for ((hash_bit=1; hash_bit<=18; hash_bit++)); do
+                echo "==== ${ALGORITHMS_NAME[$algo]} | threads=$thread | hash_bits=$hash_bit | affinity=$affinity ===="
 
-            # Write results to file
-            echo -e "\tMean: $mean"
-            echo -n "$thread,$hash_bit,$mean" >> "$FILE_NAME"
-            for run_time in ${runs[@]}
-            do
-                echo -n ",$run_time" >> "$FILE_NAME"
+                # Warm-up run
+                ./out/main $thread $hash_bit ${ALGORITHMS[$algo]} $affinity > /dev/null 2>&1
+
+                run_ms=()
+                run_dtlb=()
+                run_cache=()
+
+                for ((test_run=1; test_run<=TEST_RUNS; test_run++)); do
+                    # Single execution captures both stdout (timing) and stderr (perf)
+                    combined=$(perf stat \
+                        -e "$PERF_EVENTS" \
+                        ./out/main $thread $hash_bit ${ALGORITHMS[$algo]} $affinity \
+                        2>&1)
+
+                    timing_ms=$(echo "$combined" | grep -oE '^[0-9]+(\.[0-9]+)?' | head -1)
+                    dtlb=$(parse_perf_event "$combined" "dTLB-load-misses"); dtlb=${dtlb:-0}
+                    cache=$(parse_perf_event "$combined" "cache-misses");    cache=${cache:-0}
+                    timing_ms=${timing_ms:-0}
+
+                    run_ms+=($timing_ms)
+                    run_dtlb+=($dtlb)
+                    run_cache+=($cache)
+
+                    echo -e "\tRun $test_run: ${timing_ms}ms | dTLB-misses=${dtlb} | cache-misses=${cache}"
+                done
+
+                # Compute all means + derived metrics in a single awk call
+                read mean_ms mean_dtlb mean_cache mean_dtlb_per_tuple mean_cache_per_tuple mean_tups_per_sec < <(
+                    awk -v n="$TEST_RUNS" \
+                        -v tuples="$INPUT_TUPLES" \
+                        -v ms_list="${run_ms[*]}" \
+                        -v dtlb_list="${run_dtlb[*]}" \
+                        -v cache_list="${run_cache[*]}" \
+                    'BEGIN {
+                        split(ms_list,    ms,    " ")
+                        split(dtlb_list,  dtlb,  " ")
+                        split(cache_list, cache, " ")
+                        sum_ms=0; sum_dtlb=0; sum_cache=0
+                        for (i=1; i<=n; i++) {
+                            sum_ms    += ms[i]
+                            sum_dtlb  += dtlb[i]
+                            sum_cache += cache[i]
+                        }
+                        mean_ms    = sum_ms    / n
+                        mean_dtlb  = sum_dtlb  / n
+                        mean_cache = sum_cache / n
+                        printf "%.2f %.2f %.2f %.6f %.6f %s\n",
+                            mean_ms,
+                            mean_dtlb,
+                            mean_cache,
+                            mean_dtlb  / tuples,
+                            mean_cache / tuples,
+                            (mean_ms > 0 ? sprintf("%.4f", (tuples / mean_ms) * 1000 / 1000000) : "0")
+                    }'
+                )
+
+                echo -e "\tMean: ${mean_ms}ms | ${mean_tups_per_sec}M tuples/sec"
+                echo -e "\tdTLB misses/tuple:  ${mean_dtlb_per_tuple}"
+                echo -e "\tCache misses/tuple: ${mean_cache_per_tuple}"
+
+                # Build and append CSV row
+                row="$thread,$hash_bit,$affinity,$mean_ms,$mean_tups_per_sec"
+                row+=",${mean_dtlb},${mean_dtlb_per_tuple}"
+                row+=",${mean_cache},${mean_cache_per_tuple}"
+                for ((i=0; i<TEST_RUNS; i++)); do
+                    row+=",${run_ms[$i]},${run_dtlb[$i]},${run_cache[$i]}"
+                done
+                echo "$row" >> "$FILE_NAME"
             done
-            echo "" >> "$FILE_NAME"
         done
     done
 done

@@ -3,6 +3,7 @@
 #include <thread>
 #include <iostream>
 #include <chrono>
+#include "SetAffinity.hpp"
 
 using namespace std;
 using namespace std::chrono;
@@ -19,9 +20,9 @@ public:
           thread_partition_start_index(NUM_THREADS, vector<int>(NUM_PARTITIONS)),
           total_elements_per_partition(NUM_PARTITIONS) {};
 
-    long long create_threads_and_run()
+    long long create_threads_and_run(AffinityStrategy strategy)
     {
-        thread threads[NUM_THREADS];
+        vector<thread> threads(NUM_THREADS);
         const int TUPLES_PER_THREAD = tuples.size() / NUM_THREADS;
         vector<vector<int>> elements_per_thread(NUM_THREADS, vector<int>(NUM_PARTITIONS));
 
@@ -37,6 +38,9 @@ public:
             threads[i] = thread([this, start, end, &elements_in_partition]
                                 { count(elements_in_partition, start, end); });
         }
+
+        SetAffinity::pinThreadsToCores(threads, strategy);
+
 
         // Calculate total elements per partition, based on each threads partition elements
         for (int i = 0; i < NUM_THREADS; i++)

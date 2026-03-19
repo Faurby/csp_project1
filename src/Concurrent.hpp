@@ -4,13 +4,14 @@
 #include "types.hpp"
 #include <vector>
 #include <atomic>
+#include "SetAffinity.hpp"
 
 class Concurrent
 {
 public:
     Concurrent(TupleVector& tuples, int num_partitions, int num_threads);
 
-    long long create_threads_and_run();
+    long long create_threads_and_run(AffinityStrategy strategy);
     void print_partitions() const;
 
 private:
