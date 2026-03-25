@@ -97,10 +97,13 @@ def plot_experiment_dtlb_misses(experiemnt_name, data):
     plt.savefig(os.path.join(OUTPUT_DIR, "tlb", f"{experiemnt_name}_plot.png"))
     plt.close()
 
-def plot_experiment(experiment_info, data):
+def plot_experiment(experiment_info, data, data_scaler=None):
     plt.figure()
 
     for thread, df in sorted(data.items()):
+        if data_scaler:
+            df[data_scaler["label"]] = df[data_scaler["label"]] / data_scaler["factor"]
+
         plt.plot(
             df[experiment_info["x-axis"]],
             df[experiment_info["y-axis"]],
@@ -108,6 +111,8 @@ def plot_experiment(experiment_info, data):
             label=f"{thread} threads"
         )
 
+    if "ylim" in experiment_info.keys():
+        plt.ylim(ymin=experiment_info["ylim"])
     plt.xlabel(experiment_info["x-label"])
     plt.ylabel(experiment_info["y-label"])
     plt.title(experiment_info["graph-title"])
@@ -173,6 +178,7 @@ def main():
                         "y-axis": "mean_tuples_per_sec_millions",
                         "x-label": "Hash Bits",
                         "y-label": "Throughput [mil tuples/s]",
+                        "ylim": 0,
                         "graph-title": f"Throughput vs Hash Bits|{exp}:{aff}",
                         "output-path": os.path.join(OUTPUT_DIR, "throughput", exp+":"+aff+".png")
                     },  
@@ -184,11 +190,16 @@ def main():
                         "x-axis": "hash_bits",
                         "y-axis": "mean_dtlb_misses",
                         "x-label": "Hash Bits",
-                        "y-label": "TLB Misses",
+                        "y-label": "TLB Misses [mil misses]",
+                        "ylim": 0,
                         "graph-title": f"TLB Misses vs Hash Bits|{exp}:{aff}",
                         "output-path": os.path.join(OUTPUT_DIR, "tlb", exp+":"+aff+".png")
                     },
-                    data
+                    data,
+                    {
+                        "label": "mean_dtlb_misses",
+                        "factor": 1_000_000
+                    }
                 )
                 
                 plot_experiment(
@@ -197,6 +208,7 @@ def main():
                         "y-axis": "mean_cache_misses",
                         "x-label": "Hash Bits",
                         "y-label": "Cache Misses",
+                        "ylim": 0,
                         "graph-title": f"Cache vs Hash Bits|{exp}:{aff}",
                         "output-path": os.path.join(OUTPUT_DIR, "cache", exp+":"+aff+".png")
                     },
