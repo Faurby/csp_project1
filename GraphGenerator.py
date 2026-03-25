@@ -207,12 +207,16 @@ def main():
                         "x-axis": "hash_bits",
                         "y-axis": "mean_cache_misses",
                         "x-label": "Hash Bits",
-                        "y-label": "Cache Misses",
+                        "y-label": "Cache Misses [mil misses]",
                         "ylim": 0,
-                        "graph-title": f"Cache vs Hash Bits|{exp}:{aff}",
+                        "graph-title": f"Cache Misses vs Hash Bits|{exp}:{aff}",
                         "output-path": os.path.join(OUTPUT_DIR, "cache", exp+":"+aff+".png")
                     },
-                    data
+                    data,
+                    {
+                        "label": "mean_cache_misses",
+                        "factor": 1_000_000
+                    }
                 )
 
     # if all_experiments:
