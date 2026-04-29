@@ -3,6 +3,7 @@ import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 from math import log2
+
 """
 This is like 90% chatGPT code btw
 """
@@ -13,7 +14,8 @@ AFFINITIES = ["none", "scatter", "compact"]
 OUTPUT_DIR = "graphs"
 OUTPUT_CATEGORIES = ["throughput", "tlb", "cache"]
 
-def calculateThroughput(time): 
+
+def calculateThroughput(time):
     """
     Calculate the throughput based on the total number of tuples and the execution time.
 
@@ -23,12 +25,13 @@ def calculateThroughput(time):
     Returns:
         throughput (float): Million Touples pr secound
     """
-    
     data_amount = 2**24
-    return (data_amount/(time/1000)/1_000_000)
-    
+    return (data_amount / (time / 1000) / 1_000_000)
+
+
 def createThoughputColumn(dataframe):
     dataframe["throughput"] = calculateThroughput(dataframe["mean[ms]"])
+
 
 def load_experiment_data(experiment_path, affinity):
     """
@@ -39,7 +42,7 @@ def load_experiment_data(experiment_path, affinity):
     }
     """
     data = {}
-    csv_files = glob.glob(os.path.join(experiment_path, "*_"+affinity+"_timings.csv"))
+    csv_files = glob.glob(os.path.join(experiment_path, "*_" + affinity + "_timings.csv"))
 
     for file in csv_files:
         df = pd.read_csv(file)
@@ -55,47 +58,15 @@ def load_experiment_data(experiment_path, affinity):
     return data
 
 
-def plot_experiment_troughput(experiment_name, data):
-    """Graph 1: Lines per thread for a single experiment"""
-    plt.figure()
+def compute_global_axis_limits(all_experiments_data, x_col, y_col):
+    """Compute global x and y limits across all experiments."""
+    all_x, all_y = [], []
+    for data in all_experiments_data:
+        for df in data.values():
+            all_x.extend(df[x_col].dropna().tolist())
+            all_y.extend(df[y_col].dropna().tolist())
+    return (min(all_x), max(all_x)), (0, max(all_y))
 
-    for thread, df in sorted(data.items()):
-        # createThoughputColumn(df)
-        plt.plot(
-            df["hash_bits"],
-            df["mean_tuples_per_sec_millions"],
-            marker=GRAPH_SHAPES[int(log2(thread))-1],
-            label=f"{thread} threads"
-        )
-
-    plt.xlabel("Hash Bits")
-    plt.ylabel("Throughput [mil tuples/s]")
-    plt.title(f"Throughput vs Hash Bits - {experiment_name}")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, "troughput", f"{experiment_name}_plot.png"))
-    plt.close()
-
-def plot_experiment_dtlb_misses(experiemnt_name, data):
-    plt.figure()
-
-    for thread, df in sorted(data.items()):
-        plt.plot(
-            df["hash_bits"],
-            df["mean_dtlb_misses"],
-            marker=GRAPH_SHAPES[int(log2(thread))-1],
-            label=f"{thread} threads"
-        )
-
-    plt.xlabel("Hash Bits")
-    plt.ylabel("TLB Misses")
-    plt.title(f"TLB Misses vs Hash Bits - {experiemnt_name}")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, "tlb", f"{experiemnt_name}_plot.png"))
-    plt.close()
 
 def plot_experiment(experiment_info, data, data_scaler=None):
     plt.figure()
@@ -111,8 +82,11 @@ def plot_experiment(experiment_info, data, data_scaler=None):
             label=f"{thread} threads"
         )
 
-    if "ylim" in experiment_info.keys():
-        plt.ylim(ymin=experiment_info["ylim"])
+    if "xlim" in experiment_info:
+        plt.xlim(experiment_info["xlim"])
+    if "ylim" in experiment_info:
+        plt.ylim(experiment_info["ylim"])
+
     plt.xlabel(experiment_info["x-label"])
     plt.ylabel(experiment_info["y-label"])
     plt.title(experiment_info["graph-title"])
@@ -121,6 +95,7 @@ def plot_experiment(experiment_info, data, data_scaler=None):
     plt.tight_layout()
     plt.savefig(experiment_info["output-path"])
     plt.close()
+
 
 def plot_combined(all_experiments):
     """
@@ -154,73 +129,90 @@ def main():
         if os.path.isdir(os.path.join(BASE_DIR, d))
     ]
 
-    all_experiments = {}
-    
     if not os.path.exists(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
-    
-    for catagori in OUTPUT_CATEGORIES:
-        if not os.path.exists(os.path.join(OUTPUT_DIR, catagori)):
-            os.mkdir(os.path.join(OUTPUT_DIR, catagori))
 
+    for category in OUTPUT_CATEGORIES:
+        if not os.path.exists(os.path.join(OUTPUT_DIR, category)):
+            os.mkdir(os.path.join(OUTPUT_DIR, category))
+
+    # First pass: load all data
+    loaded = {}  # (exp, aff) -> data
     for exp in experiment_dirs:
         exp_path = os.path.join(BASE_DIR, exp)
         for aff in AFFINITIES:
             data = load_experiment_data(exp_path, aff)
-
             if data:
-                all_experiments[exp + aff] = data
-                
-                # ==== Througput graph ====
-                plot_experiment(
-                    {
-                        "x-axis": "hash_bits",
-                        "y-axis": "mean_tuples_per_sec_millions",
-                        "x-label": "Hash Bits",
-                        "y-label": "Throughput [mil tuples/s]",
-                        "ylim": 0,
-                        "graph-title": f"Throughput vs Hash Bits|{exp}:{aff}",
-                        "output-path": os.path.join(OUTPUT_DIR, "throughput", exp+":"+aff+".png")
-                    },  
-                    data
-                )
+                loaded[(exp, aff)] = data
 
-                plot_experiment(
-                    {
-                        "x-axis": "hash_bits",
-                        "y-axis": "mean_dtlb_misses",
-                        "x-label": "Hash Bits",
-                        "y-label": "TLB Misses [mil misses]",
-                        "ylim": 0,
-                        "graph-title": f"TLB Misses vs Hash Bits|{exp}:{aff}",
-                        "output-path": os.path.join(OUTPUT_DIR, "tlb", exp+":"+aff+".png")
-                    },
-                    data,
-                    {
-                        "label": "mean_dtlb_misses",
-                        "factor": 1_000_000
-                    }
-                )
-                
-                plot_experiment(
-                    {
-                        "x-axis": "hash_bits",
-                        "y-axis": "mean_cache_misses",
-                        "x-label": "Hash Bits",
-                        "y-label": "Cache Misses [mil misses]",
-                        "ylim": 0,
-                        "graph-title": f"Cache Misses vs Hash Bits|{exp}:{aff}",
-                        "output-path": os.path.join(OUTPUT_DIR, "cache", exp+":"+aff+".png")
-                    },
-                    data,
-                    {
-                        "label": "mean_cache_misses",
-                        "factor": 1_000_000
-                    }
-                )
+    # Group data by experiment name (ignoring affinity)
+    exp_groups = {}  # exp -> list of data dicts
+    for (exp, aff), data in loaded.items():
+        exp_groups.setdefault(exp, []).append(data)
 
-    # if all_experiments:
-    #     plot_combined(all_experiments)
+    # Compute per-experiment limits across all affinities
+    exp_limits = {}
+    for exp, data_list in exp_groups.items():
+        throughput_xlim, throughput_ylim = compute_global_axis_limits(data_list, "hash_bits", "mean_tuples_per_sec_millions")
+        tlb_xlim, tlb_ylim             = compute_global_axis_limits(data_list, "hash_bits", "mean_dtlb_misses")
+        cache_xlim, cache_ylim         = compute_global_axis_limits(data_list, "hash_bits", "mean_cache_misses")
+
+        exp_limits[exp] = {
+            "throughput": (throughput_xlim, throughput_ylim),
+            "tlb":        (tlb_xlim,        (0, tlb_ylim[1]   / 1_000_000)),
+            "cache":      (cache_xlim,      (0, cache_ylim[1] / 1_000_000)),
+        }
+
+    # Second pass: plot using per-experiment limits
+    for (exp, aff), data in loaded.items():
+        lims = exp_limits[exp]
+
+        plot_experiment(
+            {
+                "x-axis": "hash_bits",
+                "y-axis": "mean_tuples_per_sec_millions",
+                "x-label": "Hash Bits",
+                "y-label": "Throughput [mil tuples/s]",
+                "xlim": lims["throughput"][0],
+                "ylim": lims["throughput"][1],
+                "graph-title": f"Throughput vs Hash Bits|{exp}:{aff}",
+                "output-path": os.path.join(OUTPUT_DIR, "throughput", exp + ":" + aff + ".png")
+            },
+            data
+        )
+
+        plot_experiment(
+            {
+                "x-axis": "hash_bits",
+                "y-axis": "mean_dtlb_misses",
+                "x-label": "Hash Bits",
+                "y-label": "TLB Misses [mil misses]",
+                "xlim": lims["tlb"][0],
+                "ylim": lims["tlb"][1],
+                "graph-title": f"TLB Misses vs Hash Bits|{exp}:{aff}",
+                "output-path": os.path.join(OUTPUT_DIR, "tlb", exp + ":" + aff + ".png")
+            },
+            data,
+            {"label": "mean_dtlb_misses", "factor": 1_000_000}
+        )
+
+        plot_experiment(
+            {
+                "x-axis": "hash_bits",
+                "y-axis": "mean_cache_misses",
+                "x-label": "Hash Bits",
+                "y-label": "Cache Misses [mil misses]",
+                "xlim": lims["cache"][0],
+                "ylim": lims["cache"][1],
+                "graph-title": f"Cache Misses vs Hash Bits|{exp}:{aff}",
+                "output-path": os.path.join(OUTPUT_DIR, "cache", exp + ":" + aff + ".png")
+            },
+            data,
+            {"label": "mean_cache_misses", "factor": 1_000_000}
+        )
+
+    # if loaded:
+    #     plot_combined(loaded)
 
     print("Graphs generated successfully.")
 
