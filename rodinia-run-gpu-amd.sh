@@ -68,7 +68,8 @@ poll_gpu_metrics() {
 
         END {
             if (pwr != "" && temp != "" && sm != "" && mem != "" && mclk != "" && pclk != "")
-                print pwr","temp","sm","mem","mclk","pclk
+                if (mem+0 > 0)
+                    print pwr","temp","sm","mem","mclk","pclk
         }' >> "$outfile"
 
         sleep "$SAMPLE_INTERVAL"

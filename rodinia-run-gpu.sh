@@ -48,7 +48,7 @@ do
                 wait $DMON_PID 2>/dev/null
 
                 # Append per-run gpu metrics (skip 3-line dmon header)
-                awk 'NR>3 { print $2","$3","$5","$6","$11","$12 }' "$DMON_TMP_FILE" >> "$GPU_TMP"
+                awk 'NR>3 && $6 > 5 { print $2","$3","$5","$6","$11","$12 }' "$DMON_TMP_FILE" >> "$GPU_TMP"
                 rm "$DMON_TMP_FILE"
         done
 
