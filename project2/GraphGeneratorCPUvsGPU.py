@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import os
 
-GPU_CSV_PATH = "results.csv"
+GPU_CSV_PATH = "results-rx9070xt.csv"
 CPU_CSV_PATH = "cpu_results.csv"
 OUTPUT_DIR = "comparison_results"
 

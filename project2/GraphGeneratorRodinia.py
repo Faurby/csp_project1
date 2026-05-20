@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-CSV_PATH = "results.csv"
+CSV_PATH = "results-rtx3060.csv"
 OUTPUT_DIR = "GPU_results"
 
 METRIC_LABELS = {
@@ -59,11 +59,12 @@ def plot_standalone_timings(df, output_dir):
             color=TIMING_COLORS[metric],
             label=TIMING_DISPLAY[metric],
         )
-        ax.set_xlabel("Graph Size [millions of nodes]")
-        ax.set_ylabel(ylabel)
-        ax.set_title(title)
-        ax.set_ylim(bottom=0)
-        ax.legend()
+        ax.set_xlabel("Graph Size [millions of nodes]", fontsize=14)
+        # ax.set_xlim(left=-2, right=63)
+        ax.set_ylabel(ylabel, fontsize=14)
+        ax.set_title(title, fontsize=16)
+        ax.set_ylim(bottom=0, top=600 if metric == "avg_exec_ms" else None)
+        ax.legend(fontsize=12)
         ax.grid(True)
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, f"{metric}.png"))
@@ -121,10 +122,11 @@ def plot_other_metrics(df, output_dir):
         title, ylabel = METRIC_LABELS.get(metric, (metric, metric))
         fig, ax = plt.subplots()
         ax.plot(subset["graph_size"] / 1_000_000, subset[metric], marker="o")
-        ax.set_xlabel("Graph Size [millions of nodes]")
-        ax.set_ylabel(ylabel)
-        ax.set_title(title)
-        ax.set_ylim(bottom=0)
+        ax.set_xlabel("Graph Size [millions of nodes]", fontsize=14)
+        ax.set_xlim(left=-2, right=63)
+        ax.set_ylabel(ylabel, fontsize=14)
+        ax.set_title(title, fontsize=16)
+        ax.set_ylim(bottom=0, top=100 if metric == "avg_sm" else None)
         ax.grid(True)
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, f"{metric}.png"))
